@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  traefik:
+    # The official v3 Traefik docker image
+    image: traefik:v3.2
+    container_name: "traefik"
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.httpchallenge=true"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.email=<user>@<tld>.com"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/root/docker/traefik/traefik.yml:/etc/traefik/traefik.yml"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - frontend
+networks:
+  frontend:
+    external: true

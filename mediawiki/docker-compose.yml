@@ -1,0 +1,58 @@
+version: '3'
+
+networks:
+  frontend:
+    external: true
+    driver: bridge
+
+services:
+  mediawiki:
+    image: mediawiki:stable
+    restart: always
+    networks:
+       - frontend
+    links:
+      - database
+    volumes:
+      - /root/docker/mediawiki/images:/var/www/html/images:rw
+      - ./LocalSettings.php:/var/www/html/LocalSettings.php
+    labels:
+      - traefik.enable=true
+
+      # Router for recipes.<tld>.com
+      - "traefik.http.routers.mediawiki.rule=Host(`recipes.<tld>.com`)"
+      - "traefik.http.routers.mediawiki.entrypoints=websecure"
+      - "traefik.http.routers.mediawiki.tls=true"
+
+      # Router for redirection from <tld>.com/recipes
+      - "traefik.http.routers.recipes-redirect.rule=Host(`<tld>.com`) && PathPrefix(`/recipes`)"
+      - "traefik.http.routers.recipes-redirect.middlewares=redirect-recipes"
+  
+      # Middleware for redirection
+      - "traefik.http.middlewares.redirect-recipes.redirectregex.regex=^https?://<tld>.com/recipes(.*)"
+      - "traefik.http.middlewares.redirect-recipes.redirectregex.replacement=https://recipes.<tld>.com$$1"
+      - "traefik.http.middlewares.redirect-recipes.redirectregex.permanent=true"
+
+      # Use LetsEncrypt
+      - "traefik.http.routers.mediawiki.tls.certresolver=le"
+
+      # Redirect HTTP to HTTPS
+      - "traefik.http.routers.mediawiki.middlewares=redirect-to-https"
+
+      # Middleware for HTTP to HTTPS redirection
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+
+  database:
+    image: mysql:5.7
+    restart: always
+    networks:
+      - frontend
+    environment:
+      MYSQL_DATABASE: wiki_db
+      MYSQL_USER: wikidbuser
+      MYSQL_PASSWORD: wikimedia
+      MYSQL_ROOT_PASSWORD: <mysqlpassword>
+    volumes:
+      - /root/docker/mediawiki/mysql:/var/lib/mysql
+      - /root/docker/mediawiki/mysqlbackups:/backups
