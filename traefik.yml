@@ -1,0 +1,28 @@
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: :80
+    http:
+
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: :443
+
+providers:
+  docker:
+    exposedByDefault: false
+
+certificatesResolvers:
+  le:
+    acme:
+      email: "<user>@<tld>.com"  # Replace with your email address
+      storage: "/letsencrypt/acme.json"  # The location where certificates will be stored
+      httpChallenge:
+        entryPoint: web
